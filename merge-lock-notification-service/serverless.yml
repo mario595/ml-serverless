@@ -1,0 +1,56 @@
+service: merge-lock-notification-service
+
+provider:
+  profile: release-bot
+  name: aws
+  runtime: python2.7
+  stage: dev
+  region: eu-west-1
+  iamRoleStatements:
+    - Effect: "Allow"
+      Resource: "*"
+      Action:
+        - "lambda:InvokeFunction"
+
+package:
+  include:
+    - ../commons/**
+
+plugins:
+  - serverless-plugin-write-env-vars
+custom:
+  writeEnvVars:
+    STAGE: ${opt:stage}
+    REGION: ${opt:region}
+    DEV_SLACK_WEBHOOK_URL : ${file(../env_vars.yml):DEV_SLACK_WEBHOOK_URL}   
+    DEV_QUEUE_SERVICE_API_ID: ${file(../env_vars.yml):DEV_QUEUE_SERVICE_API_ID}
+
+    PROD_SLACK_WEBHOOK_URL : ${file(../env_vars.yml):PROD_SLACK_WEBHOOK_URL}
+    PROD_QUEUE_SERVICE_API_ID: ${file(../env_vars.yml):PROD_QUEUE_SERVICE_API_ID}
+
+functions:
+  functionUserAddedListener:
+    handler: handler.user_added_listener
+    # events:
+    #   - sns: ${opt:stage}-user_added_listener
+  functionNewTopListener:
+    handler: handler.new_top_listener
+    events:
+      - sns: ${opt:stage}-new_top_listener
+  functionUnauthPushListener:
+    handler: handler.unauthorized_push_listener
+    events:
+      - sns: ${opt:stage}-unauthorized_push_listener
+  functionClosedListener:
+    handler: handler.push_closed_window_listener
+    events:
+      - sns: ${opt:stage}-push_closed_window_listener
+  functionNewStatusListener:
+    handler: handler.status_change_listener
+    events:
+      - sns: arn:aws:sns:${opt:region}:${file(../env_vars.yml):ACCOUNT_ID}:${opt:stage}-change_status
+  functionPipelineStatus:
+    handler: handler.pipeline_status
+    events:
+      - sns: ${opt:stage}-pipeline
+

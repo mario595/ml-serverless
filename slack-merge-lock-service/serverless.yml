@@ -1,27 +1,47 @@
 service: slack-merge-lock-service
 
 provider:
-  profile: ml-serverless
+  profile: release-bot
   name: aws
   runtime: python2.7
   stage: dev
   region: eu-west-1
+  iamRoleStatements:
+    - Effect: "Allow"
+      Resource: "*"
+      Action:
+        - "lambda:*"
+
+package:
+  include:
+    - ../commons/**
+
 custom:
   writeEnvVars:
+    REGION: ${opt:region}
     STAGE: ${opt:stage}
-    DEV_USER_SERVICE_API_ID: r9mnwy3vfi
-    DEV_QUEUE_SERVICE_API_ID: 5ywhqv93l9
+    DEV_SLACK_TOKEN: ${file(../env_vars.yml):DEV_SLACK_TOKEN}
+    DEV_USER_SERVICE_API_ID: ${file(../env_vars.yml):DEV_USER_SERVICE_API_ID}
+    DEV_QUEUE_SERVICE_API_ID: ${file(../env_vars.yml):DEV_QUEUE_SERVICE_API_ID}
+    DEV_STATUS_SERVICE_API_ID: ${file(../env_vars.yml):DEV_STATUS_SERVICE_API_ID}
 
-    PROD_USER_SERVICE_API_ID: 74j3rv9sfh
-    PROD_QUEUE_SERVICE_API_ID: 0zg6xc1oz6
+    PROD_USER_SERVICE_API_ID: ${file(../env_vars.yml):PROD_USER_SERVICE_API_ID}
+    PROD_QUEUE_SERVICE_API_ID: ${file(../env_vars.yml):PROD_QUEUE_SERVICE_API_ID}
+    PROD_STATUS_SERVICE_API_ID: ${file(../env_vars.yml):PROD_STATUS_SERVICE_API_ID}
+    PROD_SLACK_TOKEN: ${file(../env_vars.yml):PROD_SLACK_TOKEN}
+    
+    REPLIER_LAMBDA_NAME: ${self:service}-${opt:stage}-functionDispatcher
 
 plugins:
   - serverless-plugin-write-env-vars
 functions:
-  mergeLock:
+  functionMergeLock:
     handler: handler.merge_lock
     events:
       - http:
           path: slack/merge-lock
           method: post
           integration: lambda
+
+  functionDispatcher:
+    handler: handler.dispatcher

@@ -1,7 +1,7 @@
 service: merge-lock-queue-service
 
 provider:
-  profile: ml-serverless
+  profile: release-bot
   name: aws
   runtime: python2.7
   stage: dev
@@ -11,16 +11,24 @@ provider:
       Resource: "*"
       Action:
         - "dynamodb:PutItem"
+        - "dynamodb:UpdateItem"
         - "dynamodb:DeleteItem"
         - "dynamodb:Scan"
+        - "sns:*"
+
+package:
+  include:
+    - ../commons/**
 
 custom:
   writeEnvVars:
     STAGE: ${opt:stage}
-    DEV_USER_SERVICE_API_ID: r9mnwy3vfi
+    REGION: ${opt:region}
+    DEV_USER_SERVICE_API_ID: ${file(../env_vars.yml):DEV_USER_SERVICE_API_ID}
 
-    PROD_USER_SERVICE_API_ID: 74j3rv9sfh
-    PROD_QUEUE_SERVICE_API_ID: 0zg6xc1oz6
+    PROD_USER_SERVICE_API_ID: ${file(../env_vars.yml):PROD_USER_SERVICE_API_ID}
+
+    ACCOUNT_ID: ${file(../env_vars.yml):ACCOUNT_ID}
 
 plugins:
   - serverless-plugin-write-env-vars
@@ -43,31 +51,39 @@ resources:
         TableName: 'merge-lock-${opt:stage}'
 
 functions:
-  add:
+  functionAdd:
     handler: handler.add
     events:
       - http:
           path: mergelock/add/
           method: post
 
-  list:
+  functionList:
     handler: handler.list
     events:
       - http:
           path: mergelock/list
           method: get
 
-  remove:
+  functionRemove:
     handler: handler.remove
     events:
       - http:
           path: mergelock/remove/
           method: post
 
-  pop:
+  functionPop:
     handler: handler.pop
     events:
       - http:
           path: mergelock/pop/{username}
           method: get
+      - sns: arn:aws:sns:${opt:region}:${file(../env_vars.yml):ACCOUNT_ID}:${opt:stage}-push
+
+  functionBack:
+    handler: handler.back
+    events:
+      - http:
+          path: mergelock/back
+          method: post
 

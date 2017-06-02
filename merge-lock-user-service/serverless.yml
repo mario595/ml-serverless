@@ -1,7 +1,7 @@
 service: merge-lock-user-service
 
 provider:
-  profile: ml-serverless
+  profile: release-bot
   name: aws
   runtime: python2.7
   region: eu-west-1
@@ -17,39 +17,40 @@ provider:
 custom:
   writeEnvVars:
     STAGE: ${opt:stage}
+    REGION: ${opt:region}
 plugins:
   - serverless-plugin-write-env-vars
 
 functions:
-  update:
+  functionUpdate:
     handler: handler.update
     events:
       - http:
           path: user-service/user
           method: PUT
           
-  listAll:
+  functionListAll:
     handler: handler.list_all
     events:
       - http:
           path: user-service/user
           method: GET
   
-  list:
+  functionListSingle:
     handler: handler.list
     events:
       - http:
           path: user-service/user/{username}
           method: GET
 
-  reverseList:
+  functionReverseList:
     handler: handler.reverseList
     events:
       - http:
           path: user-service/user/reverse/{username}
           method: GET
   
-  delete:
+  functionDelete:
     handler: handler.delete
     events:
       - http:

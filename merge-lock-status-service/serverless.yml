@@ -1,0 +1,84 @@
+service: merge-lock-status-service
+
+
+provider:
+  profile: release-bot
+  name: aws
+  runtime: python2.7
+  stage: dev
+  region: eu-west-1
+  iamRoleStatements:
+  - Effect: "Allow"
+    Resource: "*"
+    Action:
+      - "dynamodb:PutItem"
+      - "dynamodb:Query"
+      - "sns:*"
+
+plugins:
+  - serverless-plugin-write-env-vars
+
+package:
+  include:
+    - ../commons/**
+
+custom:
+  writeEnvVars:
+    STAGE: ${opt:stage}
+    REGION: ${opt:region}
+    ACCOUNT_ID: ${file(../env_vars.yml):ACCOUNT_ID}
+
+functions:
+  functionOpen:
+    handler: handler.open
+    events:
+      - http:
+          path: window/open
+          method: get
+      - schedule: cron(0 9 ? * MON-THU *)
+  functionClose:
+    handler: handler.close
+    events:
+      - http:
+          path: window/close
+          method: get
+      - schedule: cron(0 15 ? * MON-THU *)
+  functionStatus:
+    handler: handler.status
+    events:
+      - http:
+          path: window/status
+          method: get
+  functionPushListener:
+    handler: handler.pushListener
+    events:
+      - sns: "arn:aws:sns:${opt:region}:${file(../env_vars.yml):ACCOUNT_ID}:${opt:stage}-push"
+
+resources:
+  Resources:
+    statusEventsDynamoDbTable:
+        Type: 'AWS::DynamoDB::Table'
+        DeletionPolicy: Retain
+        Properties:
+          AttributeDefinitions:
+            - AttributeName: type
+              AttributeType: S
+            - AttributeName: timestamp
+              AttributeType: N
+          KeySchema:
+            - AttributeName: type
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+          TableName: 'statusEvents-${opt:stage}'
+    openWindow:
+      Type: "AWS::SNS::Topic"
+      Properties:
+        TopicName: ${opt:stage}-open_window
+    closeWindow:
+      Type: "AWS::SNS::Topic"
+      Properties:
+        TopicName: ${opt:stage}-change_status

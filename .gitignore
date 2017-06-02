@@ -2,3 +2,4 @@
 vendored/
 node_modules/
 *.log
+env_vars.yml

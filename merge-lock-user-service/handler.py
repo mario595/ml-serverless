@@ -4,6 +4,7 @@ import logging
 import urlparse
 import os
 import sys
+import urllib
 from boto3.dynamodb.conditions import Key, Attr
 
 logger = logging.getLogger()
@@ -17,10 +18,11 @@ dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
 stage = os.environ.get("STAGE")
+region = os.environ.get("REGION")
 
 
 _client = boto3.client('dynamodb')
-_dynamodb = boto3.resource('dynamodb', region_name='eu-west-1')
+_dynamodb = boto3.resource('dynamodb', region_name=region)
 
 def update(event, context):
     logger.info("Create invoked with event: %s" % event)
@@ -117,7 +119,8 @@ def _getParameters(body):
     return (parsed['username'][0], parsed['githubUsername'][0])
 
 def _getUsernameFromPath(event):
-    return event['pathParameters']['username']
+    username = event['pathParameters']['username']
+    return urllib.unquote(username)
 
 def _insert(item, table):
     return table.put_item (
